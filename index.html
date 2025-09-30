@@ -14,7 +14,7 @@
             background: linear-gradient(135deg, #333333, #555555);
             font-family: 'Arial', sans-serif;
             overflow: hidden;
-            touch-action: none; /* Prevent default touch behaviors */
+            touch-action: none;
         }
         #mode-selection, #level-selection, #god-mode-selection, #game-container {
             text-align: center;
@@ -69,25 +69,36 @@
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
             background: rgba(0, 0, 0, 0.3);
             touch-action: none;
+            position: relative;
+            padding: 10px; /* Space around canvas */
         }
         #touch-controls {
             display: none;
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            width: 120px;
+            height: 120px;
+            justify-content: space-between;
+            align-content: space-between;
             z-index: 10;
+            pointer-events: none; /* Allow clicks to pass through to canvas */
         }
         .touch-btn {
-            width: 60px;
-            height: 60px;
-            margin: 5px;
+            width: 50px;
+            height: 50px;
             background: rgba(100, 100, 100, 0.5);
             border: 2px solid #666;
             border-radius: 50%;
             color: #ddd;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
+            pointer-events: auto; /* Enable clicks on buttons */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         #score, #highScore, #levelDisplay, #timerDisplay {
             font-size: 26px;
@@ -112,6 +123,7 @@
             animation: pulse 1.2s infinite;
             display: none;
             font-weight: bold;
+            z-index: 15; /* Above touch controls */
         }
         .level-cleared, .game-completed, .time-up {
             color: #888888;
@@ -133,8 +145,9 @@
             100% { transform: scale(1); }
         }
         @media (max-width: 768px) {
-            #touch-controls { display: block; }
-            .touch-btn { width: 50px; height: 50px; font-size: 14px; }
+            #touch-controls { display: flex; }
+            #gameCanvas { width: 320px; height: 320px; }
+            #startButton, #nextLevelButton, .go-back-button { font-size: 16px; padding: 8px 16px; }
         }
     </style>
 </head>
@@ -165,9 +178,9 @@
         <div id="powerUpStatus"></div>
         <canvas id="gameCanvas" width="400" height="400"></canvas>
         <div id="touch-controls">
-            <button class="touch-btn" id="up-btn">↑</button><br>
-            <button class="touch-btn" id="left-btn">←</button>
+            <button class="touch-btn" id="up-btn">↑</button>
             <button class="touch-btn" id="down-btn">↓</button>
+            <button class="touch-btn" id="left-btn">←</button>
             <button class="touch-btn" id="right-btn">→</button>
         </div>
         <button id="startButton">Start Game</button>
