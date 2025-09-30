@@ -14,6 +14,7 @@
             background: linear-gradient(135deg, #333333, #555555);
             font-family: 'Arial', sans-serif;
             overflow: hidden;
+            touch-action: none; /* Prevent default touch behaviors */
         }
         #mode-selection, #level-selection, #god-mode-selection, #game-container {
             text-align: center;
@@ -67,6 +68,26 @@
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
             background: rgba(0, 0, 0, 0.3);
+            touch-action: none;
+        }
+        #touch-controls {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            background: rgba(100, 100, 100, 0.5);
+            border: 2px solid #666;
+            border-radius: 50%;
+            color: #ddd;
+            font-size: 16px;
+            cursor: pointer;
         }
         #score, #highScore, #levelDisplay, #timerDisplay {
             font-size: 26px;
@@ -111,6 +132,10 @@
             50% { transform: scale(1.2); }
             100% { transform: scale(1); }
         }
+        @media (max-width: 768px) {
+            #touch-controls { display: block; }
+            .touch-btn { width: 50px; height: 50px; font-size: 14px; }
+        }
     </style>
 </head>
 <body>
@@ -139,6 +164,12 @@
         <div id="timerDisplay" style="display: none;">Time: 60s</div>
         <div id="powerUpStatus"></div>
         <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="touch-controls">
+            <button class="touch-btn" id="up-btn">↑</button><br>
+            <button class="touch-btn" id="left-btn">←</button>
+            <button class="touch-btn" id="down-btn">↓</button>
+            <button class="touch-btn" id="right-btn">→</button>
+        </div>
         <button id="startButton">Start Game</button>
         <button id="nextLevelButton" style="display: none;">Next Level</button>
         <button class="go-back-button" id="gameGoBack">Go Back</button>
@@ -204,6 +235,17 @@
         const totalLevels = 50;
 
         highScoreElement.textContent = `High Score: ${highScore}`;
+
+        // Touch controls
+        const upBtn = document.getElementById('up-btn');
+        const downBtn = document.getElementById('down-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+
+        upBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (dy === 0 && isGameRunning) { dx = 0; dy = -1; } });
+        downBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (dy === 0 && isGameRunning) { dx = 0; dy = 1; } });
+        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (dx === 0 && isGameRunning) { dx = -1; dy = 0; } });
+        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (dx === 0 && isGameRunning) { dx = 1; dy = 0; } });
 
         function createLevelButtons() {
             levelGrid.innerHTML = '';
