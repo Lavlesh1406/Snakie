@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Grey Snake Game with Modes and Levels</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #333333, #555555);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        #mode-selection, #level-selection, #god-mode-selection, #game-container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(15px);
+            border: 1px solid #666666;
+            color: #dddddd;
+        }
+        #mode-selection h1, #level-selection h1, #god-mode-selection h1 {
+            font-size: 36px;
+            text-shadow: 0 0 8px #666666;
+            margin-bottom: 20px;
+        }
+        .mode-button, .level-button, #startButton, #nextLevelButton, .go-back-button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background: linear-gradient(45deg, #444444, #777777);
+            border: none;
+            border-radius: 8px;
+            color: #dddddd;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .mode-button:hover, .level-button:hover:not(:disabled), #startButton:hover, #nextLevelButton:hover, .go-back-button:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #888888;
+        }
+        .level-button:disabled, .go-back-button:disabled {
+            background: #333333;
+            color: #555555;
+            cursor: not-allowed;
+        }
+        #level-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        #game-container, #level-selection, #god-mode-selection {
+            display: none;
+        }
+        #gameCanvas {
+            border: 3px solid #666666;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+        }
+        #score, #highScore, #levelDisplay, #timerDisplay {
+            font-size: 26px;
+            margin: 10px 0;
+            text-shadow: 0 0 8px #666666, 0 0 12px #888888;
+            letter-spacing: 2px;
+        }
+        #powerUpStatus {
+            font-size: 20px;
+            margin: 10px 0;
+            text-shadow: 0 0 8px #888888;
+            display: none;
+        }
+        .game-over, .level-cleared, .game-completed, .time-up {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #aaaaaa;
+            font-size: 48px;
+            text-shadow: 0 0 10px #666666, 0 0 20px #666666;
+            animation: pulse 1.2s infinite;
+            display: none;
+            font-weight: bold;
+        }
+        .level-cleared, .game-completed, .time-up {
+            color: #888888;
+            text-shadow: 0 0 10px #888888, 0 0 20px #888888;
+        }
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        @keyframes glow {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.5); }
+            100% { filter: brightness(1); }
+        }
+        @keyframes starPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="mode-selection">
+        <h1>Choose Game Mode</h1>
+        <button class="mode-button" id="endlessMode">Endless Mode</button>
+        <button class="mode-button" id="levelsMode">Levels Mode</button>
+        <button class="mode-button" id="godMode">God Mode</button>
+        <button class="go-back-button" id="modeGoBack" disabled style="display: none;">Go Back</button>
+    </div>
+    <div id="god-mode-selection">
+        <h1>God Mode Options</h1>
+        <button class="mode-button" id="timedGodMode">Timed Game (60s)</button>
+        <button class="mode-button" id="timelessGodMode">Timeless Game</button>
+        <button class="go-back-button" id="godModeGoBack">Go Back</button>
+    </div>
+    <div id="level-selection">
+        <h1>Select Level</h1>
+        <div id="level-grid"></div>
+        <button class="go-back-button" id="levelGoBack">Go Back</button>
+    </div>
+    <div id="game-container">
+        <div id="score">Score: 0</div>
+        <div id="highScore">High Score: 0</div>
+        <div id="levelDisplay" style="display: none;">Level: 1 - Goal: 5 foods</div>
+        <div id="timerDisplay" style="display: none;">Time: 60s</div>
+        <div id="powerUpStatus"></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <button id="startButton">Start Game</button>
+        <button id="nextLevelButton" style="display: none;">Next Level</button>
+        <button class="go-back-button" id="gameGoBack">Go Back</button>
+        <div id="gameOver" class="game-over">Game Over!</div>
+        <div id="levelCleared" class="level-cleared">Level Cleared!</div>
+        <div id="gameCompleted" class="game-completed">Game Completed!</div>
+        <div id="timeUp" class="time-up">Time's Up!</div>
+    </div>
+
+    <script>
+        const modeSelection = document.getElementById('mode-selection');
+        const godModeSelection = document.getElementById('god-mode-selection');
+        const levelSelection = document.getElementById('level-selection');
+        const levelGrid = document.getElementById('level-grid');
+        const modeGoBack = document.getElementById('modeGoBack');
+        const godModeGoBack = document.getElementById('godModeGoBack');
+        const levelGoBack = document.getElementById('levelGoBack');
+        const gameGoBack = document.getElementById('gameGoBack');
+        const gameContainer = document.getElementById('game-container');
+        const endlessButton = document.getElementById('endlessMode');
+        const levelsButton = document.getElementById('levelsMode');
+        const godModeButton = document.getElementById('godMode');
+        const timedGodModeButton = document.getElementById('timedGodMode');
+        const timelessGodModeButton = document.getElementById('timelessGodMode');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const powerUpStatusElement = document.getElementById('powerUpStatus');
+        const startButton = document.getElementById('startButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const gameOverElement = document.getElementById('gameOver');
+        const levelClearedElement = document.getElementById('levelCleared');
+        const gameCompletedElement = document.getElementById('gameCompleted');
+        const timeUpElement = document.getElementById('timeUp');
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+        let snake = [];
+        let food = { x: 15, y: 15, type: 'normal' };
+        let powerUp = null;
+        let dx = 1;
+        let dy = 0;
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+        let highestClearedLevel = localStorage.getItem('highestClearedLevel') ? parseInt(localStorage.getItem('highestClearedLevel')) : 0;
+        let gameLoop;
+        let gameSpeed = 100;
+        let isGameRunning = false;
+        let animationTime = 0;
+        let doublePointsCount = 0;
+        let invincibilityEndTime = 0;
+        let powerUpTimer = null;
+        let gameMode = 'endless';
+        let currentLevel = 1;
+        let foodsEaten = 0;
+        let levelGoal = 5;
+        let obstacles = [];
+        let timer = 60;
+        let timerInterval = null;
+        const totalLevels = 50;
+
+        highScoreElement.textContent = `High Score: ${highScore}`;
+
+        function createLevelButtons() {
+            levelGrid.innerHTML = '';
+            for (let i = 1; i <= totalLevels; i++) {
+                const button = document.createElement('button');
+                button.classList.add('level-button');
+                button.textContent = i;
+                if (i > highestClearedLevel + 1) {
+                    button.disabled = true;
+                }
+                button.addEventListener('click', () => {
+                    currentLevel = i;
+                    gameMode = 'levels';
+                    levelSelection.style.display = 'none';
+                    gameContainer.style.display = 'block';
+                    levelDisplay.style.display = 'block';
+                    timerDisplay.style.display = 'none';
+                    levelGoal = 5 + (currentLevel - 1) * 2;
+                    gameSpeed = Math.max(50, 150 - (currentLevel - 1) * 2);
+                    levelDisplay.textContent = `Level: ${currentLevel} - Goal: ${levelGoal} foods (Eaten: 0)`;
+                });
+                levelGrid.appendChild(button);
+            }
+        }
+
+        createLevelButtons();
+
+        endlessButton.addEventListener('click', () => {
+            gameMode = 'endless';
+            modeSelection.style.display = 'none';
+            gameContainer.style.display = 'block';
+            levelDisplay.style.display = 'none';
+            timerDisplay.style.display = 'none';
+        });
+
+        levelsButton.addEventListener('click', () => {
+            modeSelection.style.display = 'none';
+            levelSelection.style.display = 'block';
+        });
+
+        godModeButton.addEventListener('click', () => {
+            modeSelection.style.display = 'none';
+            godModeSelection.style.display = 'block';
+        });
+
+        timedGodModeButton.addEventListener('click', () => {
+            gameMode = 'god-timed';
+            godModeSelection.style.display = 'none';
+            gameContainer.style.display = 'block';
+            levelDisplay.style.display = 'none';
+            timerDisplay.style.display = 'block';
+            timer = 60;
+            timerDisplay.textContent = `Time: ${timer}s`;
+        });
+
+        timelessGodModeButton.addEventListener('click', () => {
+            gameMode = 'god-timeless';
+            godModeSelection.style.display = 'none';
+            gameContainer.style.display = 'block';
+            levelDisplay.style.display = 'none';
+            timerDisplay.style.display = 'none';
+        });
+
+        godModeGoBack.addEventListener('click', () => {
+            godModeSelection.style.display = 'none';
+            modeSelection.style.display = 'block';
+        });
+
+        levelGoBack.addEventListener('click', () => {
+            levelSelection.style.display = 'none';
+            modeSelection.style.display = 'block';
+        });
+
+        gameGoBack.addEventListener('click', () => {
+            clearInterval(gameLoop);
+            clearInterval(timerInterval);
+            clearTimeout(powerUpTimer);
+            isGameRunning = false;
+            gameContainer.style.display = 'none';
+            gameOverElement.style.display = 'none';
+            levelClearedElement.style.display = 'none';
+            gameCompletedElement.style.display = 'none';
+            timeUpElement.style.display = 'none';
+            startButton.style.display = 'block';
+            startButton.textContent = 'Start Game';
+            nextLevelButton.style.display = 'none';
+            if (gameMode === 'levels') {
+                levelSelection.style.display = 'block';
+            } else if (gameMode === 'god-timed' || gameMode === 'god-timeless') {
+                godModeSelection.style.display = 'block';
+            } else {
+                modeSelection.style.display = 'block';
+            }
+        });
+
+        nextLevelButton.addEventListener('click', () => {
+            if (currentLevel >= totalLevels) {
+                gameCompletedElement.style.display = 'block';
+                nextLevelButton.style.display = 'none';
+                startButton.style.display = 'block';
+                startButton.textContent = 'Back to Menu';
+                return;
+            }
+            currentLevel++;
+            if (currentLevel > highestClearedLevel) {
+                highestClearedLevel = currentLevel;
+                localStorage.setItem('highestClearedLevel', highestClearedLevel);
+                createLevelButtons();
+            }
+            levelClearedElement.style.display = 'none';
+            nextLevelButton.style.display = 'none';
+            isGameRunning = true;
+            snake = [
+                { x: 10, y: 10, offset: 0 },
+                { x: 9, y: 10, offset: 0.2 },
+                { x: 8, y: 10, offset: 0.4 }
+            ];
+            dx = 1;
+            dy = 0;
+            foodsEaten = 0;
+            animationTime = 0;
+            doublePointsCount = 0;
+            invincibilityEndTime = 0;
+            powerUp = null;
+            clearTimeout(powerUpTimer);
+            powerUpStatusElement.style.display = 'none';
+            levelGoal = 5 + (currentLevel - 1) * 2;
+            gameSpeed = Math.max(50, 150 - (currentLevel - 1) * 2);
+            generateObstacles();
+            levelDisplay.textContent = `Level: ${currentLevel} - Goal: ${levelGoal} foods (Eaten: 0)`;
+            generateFood();
+            gameLoop = setInterval(update, gameSpeed);
+        });
+
+        function getFreePositions() {
+            const freePositions = [];
+            for (let x = 0; x < tileCount; x++) {
+                for (let y = 0; y < tileCount; y++) {
+                    if (isPositionFree(x, y)) {
+                        freePositions.push({ x, y });
+                    }
+                }
+            }
+            return freePositions;
+        }
+
+        function isPositionFree(x, y) {
+            if (x === food.x && y === food.y && food.type === 'normal') return false;
+            if (powerUp && x === powerUp.x && y === powerUp.y) return false;
+            for (let segment of snake) {
+                if (segment.x === x && segment.y === y) return false;
+            }
+            if (gameMode === 'levels') {
+                for (let obs of obstacles) {
+                    if (obs.x === x && obs.y === y) return false;
+                }
+            }
+            return true;
+        }
+
+        function generateObstacles() {
+            obstacles = [];
+            if (gameMode !== 'levels') return;
+            const numObstacles = Math.floor((currentLevel - 1) / 5);
+            const freePositions = getFreePositions();
+            for (let i = 0; i < numObstacles && freePositions.length > 0; i++) {
+                const index = Math.floor(Math.random() * freePositions.length);
+                const pos = freePositions.splice(index, 1)[0];
+                obstacles.push(pos);
+            }
+        }
+
+        function generateFood() {
+            if (powerUp) return;
+            const freePositions = getFreePositions();
+            if (freePositions.length === 0) {
+                food = { x: -1, y: -1, type: 'normal' };
+                return;
+            }
+            const index = Math.floor(Math.random() * freePositions.length);
+            food = { ...freePositions[index], type: 'normal' };
+            if (Math.random() < 0.05 && !powerUp) {
+                food.type = 'powerUp';
+                powerUp = food;
+                powerUpTimer = setTimeout(() => {
+                    if (food.type === 'powerUp') {
+                        food.type = 'normal';
+                        powerUp = null;
+                        generateFood();
+                    }
+                }, 10000);
+            }
+        }
+
+        function drawObstacles() {
+            if (gameMode !== 'levels') return;
+            obstacles.forEach(obs => {
+                ctx.fillStyle = '#444444';
+                ctx.fillRect(obs.x * gridSize, obs.y * gridSize, gridSize, gridSize);
+            });
+        }
+
+        function drawSnake() {
+            animationTime += 0.1;
+            snake.forEach((segment, index) => {
+                ctx.save();
+                ctx.beginPath();
+                const slitherOffset = Math.sin(animationTime + segment.offset) * 3;
+                const posX = segment.x * gridSize + (dx === 0 ? slitherOffset : 0);
+                const posY = segment.y * gridSize + (dy === 0 ? slitherOffset : 0);
+
+                if (index === 0) {
+                    const gradient = ctx.createLinearGradient(posX, posY, posX + gridSize, posY + gridSize);
+                    gradient.addColorStop(0, '#aaaaaa');
+                    gradient.addColorStop(1, '#666666');
+                    ctx.fillStyle = gradient;
+                    ctx.arc(posX + gridSize / 2, posY + gridSize / 2, gridSize / 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    const eyeSize = 3 + Math.sin(animationTime) * 0.5;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(posX + gridSize / 3, posY + gridSize / 3, eyeSize, 0, Math.PI * 2);
+                    ctx.arc(posX + 2 * gridSize / 3, posY + gridSize / 3, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(posX + gridSize / 3, posY + 2 * gridSize / 3);
+                    ctx.lineTo(posX + 2 * gridSize / 3, posY + 2 * gridSize / 3);
+                    ctx.stroke();
+                } else {
+                    const gradient = ctx.createLinearGradient(posX, posY, posX + gridSize, posY + gridSize);
+                    gradient.addColorStop(0, index === snake.length - 1 ? '#333333' : '#777777');
+                    gradient.addColorStop(1, '#444444');
+                    ctx.fillStyle = gradient;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = invincibilityEndTime > Date.now() ? 'rgba(200, 200, 200, 0.7)' : 'rgba(100, 100, 100, 0.7)';
+                    ctx.roundRect(posX + 2, posY + 2, gridSize - 4, gridSize - 4, 5);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    const scaleOffset = Math.cos(animationTime + segment.offset) * 2;
+                    ctx.moveTo(posX + gridSize / 4 + scaleOffset, posY + gridSize / 2);
+                    ctx.lineTo(posX + 3 * gridSize / 4 + scaleOffset, posY + gridSize / 2);
+                    ctx.stroke();
+                }
+                ctx.closePath();
+                ctx.restore();
+            });
+        }
+
+        if (!ctx.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                this.beginPath();
+                this.moveTo(x + r, y);
+                this.lineTo(x + w - r, y);
+                this.quadraticCurveTo(x + w, y, x + w, y + r);
+                this.lineTo(x + w, y + h - r);
+                this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                this.lineTo(x + r, y + h);
+                this.quadraticCurveTo(x, y + h, x, y + h - r);
+                this.lineTo(x, y + r);
+                this.quadraticCurveTo(x, y, x + r, y);
+                this.closePath();
+            };
+        }
+
+        function drawFood() {
+            if (food.x < 0 || food.y < 0) return;
+            ctx.save();
+            ctx.beginPath();
+            if (food.type === 'normal') {
+                const gradient = ctx.createRadialGradient(food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, 0, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, gridSize / 2);
+                gradient.addColorStop(0, '#888888');
+                gradient.addColorStop(1, '#aaaaaa');
+                ctx.fillStyle = gradient;
+                ctx.arc(food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, gridSize / 2.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'rgba(136, 136, 136, 0.7)';
+                ctx.fill();
+            } else {
+                ctx.fillStyle = '#cccccc';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(204, 204, 204, 0.8)';
+                const centerX = food.x * gridSize + gridSize / 2;
+                const centerY = food.y * gridSize + gridSize / 2;
+                const outerRadius = gridSize / 2;
+                const innerRadius = gridSize / 4;
+                ctx.beginPath();
+                for (let i = 0; i < 10; i++) {
+                    const angle = Math.PI / 5 * i;
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const x = centerX + radius * Math.cos(angle);
+                    const y = centerY + radius * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.translate(centerX, centerY);
+                ctx.scale(1 + 0.1 * Math.sin(animationTime), 1 + 0.1 * Math.sin(animationTime));
+                ctx.translate(-centerX, -centerY);
+                ctx.fill();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+            }
+            ctx.closePath();
+            ctx.restore();
+        }
+
+        function moveSnake() {
+            let head = { x: snake[0].x + dx, y: snake[0].y + dy, offset: 0 };
+
+            if (gameMode === 'god-timed' || gameMode === 'god-timeless') {
+                head.x = (head.x + tileCount) % tileCount;
+                head.y = (head.y + tileCount) % tileCount;
+            }
+
+            snake.unshift(head);
+
+            if (food.x >= 0 && food.y >= 0 && head.x === food.x && head.y === food.y) {
+                let points = doublePointsCount > 0 ? 20 : 10;
+                score += points;
+                scoreElement.textContent = `Score: ${score}`;
+                if (food.type === 'powerUp') {
+                    clearTimeout(powerUpTimer);
+                    powerUp = null;
+                    if (Math.random() < 0.5) {
+                        doublePointsCount = 3;
+                        powerUpStatusElement.textContent = 'Double Points: 3 foods left';
+                        powerUpStatusElement.style.display = 'block';
+                    } else {
+                        invincibilityEndTime = Date.now() + 5000;
+                        powerUpStatusElement.textContent = 'Invincibility: 5s';
+                        powerUpStatusElement.style.display = 'block';
+                    }
+                    playSound('powerUp');
+                } else {
+                    if (doublePointsCount > 0) {
+                        doublePointsCount--;
+                        powerUpStatusElement.textContent = `Double Points: ${doublePointsCount} foods left`;
+                        if (doublePointsCount === 0) powerUpStatusElement.style.display = 'none';
+                    }
+                    playSound('eat');
+                }
+                foodsEaten++;
+                if (gameMode === 'endless') {
+                    gameSpeed = Math.max(50, gameSpeed - 2);
+                } else if (gameMode === 'levels') {
+                    levelDisplay.textContent = `Level: ${currentLevel} - Goal: ${levelGoal} foods (Eaten: ${foodsEaten})`;
+                    if (foodsEaten >= levelGoal) {
+                        clearInterval(gameLoop);
+                        isGameRunning = false;
+                        levelClearedElement.style.display = 'block';
+                        nextLevelButton.style.display = 'block';
+                        gameGoBack.style.display = 'block';
+                        if (currentLevel >= totalLevels) {
+                            gameCompletedElement.style.display = 'block';
+                            nextLevelButton.style.display = 'none';
+                            startButton.style.display = 'block';
+                            startButton.textContent = 'Back to Menu';
+                        }
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('highScore', highScore);
+                            highScoreElement.textContent = `High Score: ${highScore}`;
+                        }
+                        return;
+                    }
+                }
+                generateFood();
+                snake[snake.length - 1].offset = snake[snake.length - 2].offset + 0.2;
+            } else {
+                snake.pop();
+            }
+
+            snake.forEach((segment, index) => {
+                if (index > 0) {
+                    segment.offset = snake[0].offset + index * 0.2;
+                }
+            });
+        }
+
+        function checkCollision() {
+            if (gameMode === 'god-timed' || gameMode === 'god-timeless') {
+                return false;
+            }
+            const head = snake[0];
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                return true;
+            }
+            for (let obs of obstacles) {
+                if (head.x === obs.x && head.y === obs.y) {
+                    return true;
+                }
+            }
+            if (invincibilityEndTime <= Date.now()) {
+                for (let i = 1; i < snake.length; i++) {
+                    if (head.x === snake[i].x && head.y === snake[i].y) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function playSound(type) {
+            const audio = new Audio();
+            audio.src = type === 'eat' ? 'https://www.soundjay.com/sounds/button-30.mp3' :
+                        type === 'powerUp' ? 'https://www.soundjay.com/sounds/button-16.mp3' :
+                        'https://www.soundjay.com/sounds/button-09.mp3';
+            audio.play().catch(() => {});
+        }
+
+        function startTimer() {
+            if (gameMode !== 'god-timed') return;
+            timerInterval = setInterval(() => {
+                timer--;
+                timerDisplay.textContent = `Time: ${timer}s`;
+                if (timer <= 0) {
+                    clearInterval(gameLoop);
+                    clearInterval(timerInterval);
+                    isGameRunning = false;
+                    timeUpElement.style.display = 'block';
+                    startButton.textContent = 'Restart Game';
+                    startButton.style.display = 'block';
+                    gameGoBack.style.display = 'block';
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('highScore', highScore);
+                        highScoreElement.textContent = `High Score: ${highScore}`;
+                    }
+                }
+            }, 1000);
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            clearInterval(gameLoop);
+            clearTimeout(powerUpTimer);
+            gameOverElement.style.display = 'block';
+            startButton.textContent = 'Restart Game';
+            startButton.style.display = 'block';
+            gameGoBack.style.display = 'block';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreElement.textContent = `High Score: ${highScore}`;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawObstacles();
+            drawSnake();
+            drawFood();
+        }
+
+        function update() {
+            moveSnake();
+            if (checkCollision()) {
+                gameOver();
+            } else {
+                if (invincibilityEndTime > Date.now()) {
+                    const timeLeft = Math.ceil((invincibilityEndTime - Date.now()) / 1000);
+                    if (powerUpStatusElement.textContent.startsWith('Invincibility')) {
+                        powerUpStatusElement.textContent = `Invincibility: ${timeLeft}s`;
+                    }
+                } else if (powerUpStatusElement.textContent.startsWith('Invincibility')) {
+                    powerUpStatusElement.style.display = 'none';
+                }
+                draw();
+            }
+        }
+
+        document.addEventListener('keydown', e => {
+            if (!isGameRunning) return;
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (dy === 0) { dx = 0; dy = -1; }
+                    break;
+                case 'ArrowDown':
+                    if (dy === 0) { dx = 0; dy = 1; }
+                    break;
+                case 'ArrowLeft':
+                    if (dx === 0) { dx = -1; dy = 0; }
+                    break;
+                case 'ArrowRight':
+                    if (dx === 0) { dx = 1; dy = 0; }
+                    break;
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            if (!isGameRunning) {
+                if (startButton.textContent === 'Back to Menu') {
+                    gameContainer.style.display = 'none';
+                    levelSelection.style.display = 'block';
+                    gameCompletedElement.style.display = 'none';
+                    startButton.style.display = 'none';
+                    gameGoBack.style.display = 'none';
+                    return;
+                }
+                isGameRunning = true;
+                startButton.style.display = 'none';
+                gameOverElement.style.display = 'none';
+                timeUpElement.style.display = 'none';
+                gameGoBack.style.display = 'block';
+                snake = [
+                    { x: 10, y: 10, offset: 0 },
+                    { x: 9, y: 10, offset: 0.2 },
+                    { x: 8, y: 10, offset: 0.4 }
+                ];
+                dx = 1;
+                dy = 0;
+                score = 0;
+                foodsEaten = 0;
+                animationTime = 0;
+                doublePointsCount = 0;
+                invincibilityEndTime = 0;
+                powerUp = null;
+                clearTimeout(powerUpTimer);
+                clearInterval(timerInterval);
+                powerUpStatusElement.style.display = 'none';
+                if (gameMode === 'levels') {
+                    generateObstacles();
+                    levelGoal = 5 + (currentLevel - 1) * 2;
+                    gameSpeed = Math.max(50, 150 - (currentLevel - 1) * 2);
+                    levelDisplay.textContent = `Level: ${currentLevel} - Goal: ${levelGoal} foods (Eaten: 0)`;
+                    levelDisplay.style.display = 'block';
+                    timerDisplay.style.display = 'none';
+                } else if (gameMode === 'god-timed') {
+                    obstacles = [];
+                    gameSpeed = 100;
+                    timer = 60;
+                    timerDisplay.textContent = `Time: ${timer}s`;
+                    timerDisplay.style.display = 'block';
+                    levelDisplay.style.display = 'none';
+                    startTimer();
+                } else {
+                    obstacles = [];
+                    gameSpeed = 100;
+                    timerDisplay.style.display = 'none';
+                    levelDisplay.style.display = 'none';
+                }
+                scoreElement.textContent = `Score: ${score}`;
+                generateFood();
+                gameLoop = setInterval(update, gameSpeed);
+            }
+        });
+
+        draw();
+    </script>
+</body>
+</html>
